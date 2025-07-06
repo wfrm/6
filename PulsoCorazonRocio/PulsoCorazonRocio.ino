@@ -29,12 +29,20 @@
 #include "heartRate.h"
 
 MAX30105 particleSensor;
+#include <Adafruit_NeoPixel.h>
 
-#define enH 6
-#define in1 5//7
-#define in2 4
-bool finger = false;
+// ========== Configuración de NeoPixel ==========
+#define LED_PIN     6
+#define LED_COUNT   64
+#define BRIGHTNESS  255
 
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+
+
+
+
+float level = 1.0;
 const byte RATE_SIZE = 4; //Increase this for more averaging. 4 is good.
 byte rates[RATE_SIZE]; //Array of heart rates
 byte rateSpot = 0;
@@ -42,24 +50,9 @@ long lastBeat = 0; //Time at which the last beat occurred
 
 float beatsPerMinute;
 int beatAvg;
-boolean p = false;
-boolean pLuz = false;
-boolean ok = false;
-long delta = 0;
-long deltaOK = 0;
-static unsigned long tempoOFF = millis();
-static unsigned long tempoOFFLuz = millis();
 
 void setup()
 {
-  pinMode(in1, OUTPUT);
-  pinMode(in2, OUTPUT);
-  pinMode(enH, OUTPUT);
-  pinMode(13, OUTPUT);
-
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, LOW);
-
   Serial.begin(115200);
   Serial.println("Initializing...");
 
@@ -74,26 +67,27 @@ void setup()
   particleSensor.setup(); //Configure sensor with default settings
   particleSensor.setPulseAmplitudeRed(0x0A); //Turn Red LED to low to indicate sensor is running
   particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED
-  digitalWrite(enH, HIGH);
+    // Iniciar LEDs
+  strip.begin();
+  strip.setBrightness(BRIGHTNESS);
+  strip.show(); // apagar todos los LEDs
 }
-
 
 void loop()
 {
+  
   long irValue = particleSensor.getIR();
 
-  if (checkForBeat(irValue) == true)
+  //if (checkForBeat(irValue) == true)
   {
     //We sensed a beat!
-    delta = millis() - lastBeat;
+    long delta = millis() - lastBeat;
     lastBeat = millis();
 
     beatsPerMinute = 60 / (delta / 1000.0);
 
-    //if (beatsPerMinute < 255 && beatsPerMinute > 20)
-    if (beatsPerMinute < 350 && beatsPerMinute > 20)
+    if (beatsPerMinute < 255 && beatsPerMinute > 20)
     {
-      deltaOK = delta;
       rates[rateSpot++] = (byte)beatsPerMinute; //Store this reading in the array
       rateSpot %= RATE_SIZE; //Wrap variable
 
@@ -102,115 +96,56 @@ void loop()
       for (byte x = 0 ; x < RATE_SIZE ; x++)
         beatAvg += rates[x];
       beatAvg /= RATE_SIZE;
-
-      Serial.print("IR=");
-      Serial.print(irValue);
-      Serial.print(", delta=");
-      Serial.print(delta);
-      Serial.print(", BPM=");
-      Serial.print(beatsPerMinute);
-      Serial.print(", Avg BPM=");
-      Serial.print(beatAvg);
-      Serial.println();
-      ok = true;
-
-
     }
   }
 
-  pulso(deltaOK);
-  luzFija(deltaOK);
+  Serial.print("IR=");
+  Serial.print(irValue);
+  Serial.print(", BPM=");
+  Serial.print(beatsPerMinute);
+  Serial.print(", Avg BPM=");
+  Serial.print(beatAvg);
+
+  if (irValue < 50000)
+  {
+    Serial.print(" No finger?");
+      
+      breatheOrange(abs(50));
+  }
+  else{
+    breatheOrange(abs(5-beatAvg/10));
+  }
+  Serial.println();
 
 
-  if (irValue < 40000)
-  {
-    Serial.println(" No finger?");
-    finger = false;
-  }
-  else
-  {
-    finger = true;
-  }
-
-  if (millis() - tempoOFF > 100 and p)
-  {
-    digitalWrite(enH, LOW);
-    digitalWrite(in1, LOW);
-    digitalWrite(13, LOW);
-    p = false;
-    //tempo = millis();
-  }
   
-  if (millis() - tempoOFFLuz > 50 and pLuz)
-  {
-    digitalWrite(in2, LOW);
-    digitalWrite(13, LOW);
-    pLuz = false;
-    //tempo = millis();
-  }
-
-}
-void luz(long d)
-{
-
-  static unsigned long tempoLuz = millis();
-  if (millis() - tempoLuz > d / 50 && ok and finger)
-  {
-    //Serial.print("[pulsoLuz] "); Serial.println( d/10);
-    digitalWrite(in2, HIGH);
-    //digitalWrite(in2, HIGH);
-    digitalWrite(13, HIGH);
-    if (!pLuz)
-    {
-      tempoOFFLuz = millis();
-      pLuz = true;
-    }
-    tempoLuz = millis();
-  }
-
 
 }
 
-void luzFija(long d)
-{
-
-  static unsigned long tempoLuz = millis();
-  if (finger)
-  {
-    //Serial.print("[pulsoLuz] "); Serial.println( d/10);
-    digitalWrite(in2, HIGH);
-    //digitalWrite(in2, HIGH);
-    digitalWrite(13, HIGH);
-
+void breatheOrange(uint8_t wait) {
+  // Subir brillo
+  for (int i = 0; i < 128; i++) {
+    uint8_t factor = strip.gamma8(i);
+    uint8_t r = (255 * factor) / 255;
+    uint8_t g = (100 * factor) / 255;
+    uint8_t b = 0;
+    strip.fill(strip.Color(r, g, b));
+    strip.show();
+    delay(wait);
   }
-  else
-  {
-      digitalWrite(in2, LOW);
-    digitalWrite(13, LOW);
-  
+
+  // Bajar brillo
+  for (int i = 128; i >= 0; i--) {
+    uint8_t factor = strip.gamma8(i);
+    uint8_t r = (255 * factor * 1) / 255;
+    uint8_t g = (250 * factor * level) / 255;
+    uint8_t b = 0;
+    strip.fill(strip.Color(r, g, b));
+    strip.show();
+    delay(wait);
   }
-  
-
-
 }
 
-void pulso(long d)
-{
-
-  static unsigned long tempo = millis();
-  if (millis() - tempo > d && ok and finger)
-  {
-    Serial.print("[pulso] "); Serial.println( d);
-    digitalWrite(enH, HIGH);
-    digitalWrite(in1, HIGH);
-    digitalWrite(13, HIGH);
-    if (!p)
-    {
-      tempoOFF = millis();
-      p = true;
-    }
-    tempo = millis();
-  }
-
-
+float mapFloat(long x, long in_min, long in_max, float out_min, float out_max) {
+  return (float)(x - in_min) * (out_max - out_min) / (float)(in_max - in_min) + out_min;
 }
