@@ -23,7 +23,7 @@ CRGB leds[NUM_LEDS];
 // ========== Estados ==========
 bool dedoPresente = false;
 unsigned long ultimoCambioDedo = 0;
-const long debounceTiempo =500;
+const long debounceTiempo = 500;
 
 // ========== Efecto respiración ==========
 uint8_t breatheStep = 0;
@@ -34,6 +34,33 @@ unsigned long lastBreatheUpdate = 0;
 bool latidoActivo = false;
 unsigned long latidoInicio = 0;
 const int duracionLatido = 150;  // ms
+
+
+uint8_t gHue = 0; // rotating "base color" used by many of the patterns
+#define FRAMES_PER_SECOND  120
+CRGBPalette16 orange_palette_1 = 
+  { 0x1A0500, 0x2A0A00, 0x3A1000, 0x4A1500, 
+    0x5A1A00, 0x6A1F00, 0x7A2500, 0x8A2A00,
+    0x9A2F00, 0xAA3400, 0xBB3A00, 0xCC3F00,
+    0xDD4400, 0xEE4A00, 0xFF5500, 0xFFAA33 };
+CRGBPalette16 orange_fire_palette =
+  { 0x1A0000, 0x2A0800, 0x3A1000, 0x4B1800,
+    0x5C2000, 0x6C2800, 0x7D3000, 0x8E3800,
+    0x9E4000, 0xAF4800, 0xC05000, 0xD15800,
+    0xE16000, 0xF26800, 0xFF7000, 0xFFAA33 };
+CRGBPalette16 amber_glow_palette =
+  { 0x331000, 0x442000, 0x553000, 0x664000,
+    0x775000, 0x886000, 0x997000, 0xAA8000,
+    0xBB9000, 0xCC9F00, 0xDDAF00, 0xEEBF00,
+    0xFFCF00, 0xFFD74A, 0xFFE080, 0xFFF0B0 };
+
+CRGBPalette16 saturated_orange_palette =
+  { 0x330000, 0x551100, 0x772200, 0x993300,
+    0xBB4400, 0xDD5500, 0xFF6600, 0xFF7700,
+    0xFF8800, 0xFF9900, 0xFFAA00, 0xFFBB22,
+    0xFFCC44, 0xFFDD66, 0xFFEE88, 0xFFFFAA };
+
+
 
 void setup() {
   Serial.begin(115200);
@@ -54,6 +81,42 @@ void setup() {
   FastLED.show();
 }
 
+void pacifica_loop()
+{
+  // Increment the four "color index start" counters, one for each wave layer.
+  // Each is incremented at a different speed, and the speeds vary over time.
+  static uint16_t sCIStart1, sCIStart2, sCIStart3, sCIStart4;
+  static uint32_t sLastms = 0;
+  uint32_t ms = GET_MILLIS();
+  uint32_t deltams = ms - sLastms;
+  sLastms = ms;
+  uint16_t speedfactor1 = beatsin16(3, 179, 269);
+  uint16_t speedfactor2 = beatsin16(4, 179, 269);
+  uint32_t deltams1 = (deltams * speedfactor1) / 256;
+  uint32_t deltams2 = (deltams * speedfactor2) / 256;
+  uint32_t deltams21 = (deltams1 + deltams2) / 2;
+  sCIStart1 += (deltams1 * beatsin88(1011,10,13));
+  sCIStart2 -= (deltams21 * beatsin88(777,8,11));
+  sCIStart3 -= (deltams1 * beatsin88(501,5,7));
+  sCIStart4 -= (deltams2 * beatsin88(257,4,6));
+
+  // Clear out the LED array to a dim background blue-green
+  fill_solid( leds, NUM_LEDS, CRGB( 2, 6, 10));
+
+  // Render each of four layers, with different scales and speeds, that vary over time
+  pacifica_one_layer( orange_palette_1, sCIStart1, beatsin16( 3, 11 * 256, 14 * 256), beatsin8( 10, 70, 130), 0-beat16( 301) );
+  pacifica_one_layer( orange_fire_palette, sCIStart2, beatsin16( 4,  6 * 256,  9 * 256), beatsin8( 17, 40,  80), beat16( 401) );
+  pacifica_one_layer( amber_glow_palette, sCIStart3, 6 * 256, beatsin8( 9, 10,38), 0-beat16(503));
+  pacifica_one_layer( saturated_orange_palette, sCIStart4, 5 * 256, beatsin8( 8, 10,28), beat16(601));
+
+  // Add brighter 'whitecaps' where the waves lines up more
+  pacifica_add_whitecaps();
+
+  // Deepen the blues and greens a bit
+  pacifica_deepen_colors();
+}
+
+
 void loop() {
   long irValue = particleSensor.getIR();
   unsigned long ahora = millis();
@@ -62,7 +125,7 @@ void loop() {
   if (irValue > 50000 && !dedoPresente && ahora - ultimoCambioDedo > debounceTiempo) {
     dedoPresente = true;
     ultimoCambioDedo = ahora;
-    rates[rateSpot++]=60;
+    rates[rateSpot++] = 60;
     Serial.println("🟢 Dedo detectado");
   } else if (irValue < 50000 && dedoPresente && ahora - ultimoCambioDedo > debounceTiempo) {
     dedoPresente = false;
@@ -100,9 +163,15 @@ void loop() {
 
   // === Mostrar animación ===
   if (dedoPresente) {
-    mostrarPulso(ahora);
+    bpm();
+    FastLED.show();
+    // insert a delay to keep the framerate modest
+    FastLED.delay(1000 / FRAMES_PER_SECOND);
+
+    //mostrarPulso(ahora);
   } else {
-    respirar(ahora, 120);  // respiración lenta
+    respirarNaranja();
+    //respirar(ahora, 120);  // respiración lenta
   }
 }
 
@@ -111,7 +180,7 @@ void mostrarPulso(unsigned long ahora) {
     if (ahora - latidoInicio < duracionLatido) {
       fill_solid(leds, NUM_LEDS, CRGB::OrangeRed);
     } else {
-      
+
       FastLED.clear();
     }
     FastLED.show();
@@ -122,7 +191,7 @@ void respirar(unsigned long ahora, uint8_t velocidad) {
   if (ahora - lastBreatheUpdate >= velocidad) {
     lastBreatheUpdate = ahora;
 
-    uint8_t factor = breathingUp ? breatheStep+=20 : breatheStep-=20;
+    uint8_t factor = breathingUp ? breatheStep += 20 : breatheStep -= 20;
     uint8_t brillo = dim8_video(factor);
     CRGB color = CRGB(brillo, brillo * 0.4, 0);  // Naranja cálido
 
@@ -131,5 +200,72 @@ void respirar(unsigned long ahora, uint8_t velocidad) {
 
     if (breathingUp && breatheStep >= 255) breathingUp = false;
     if (!breathingUp && breatheStep <= 0) breathingUp = true;
+  }
+}
+void bpm()
+{
+  uint8_t BeatsPerMinute = 62;
+  // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
+  if (beatAvg !=0)
+  BeatsPerMinute=(uint8_t)beatAvg;
+  
+  CRGBPalette16 palette = PartyColors_p;
+  uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+  for ( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
+  }
+}
+
+// Add one layer of waves into the led array
+void pacifica_one_layer( CRGBPalette16& p, uint16_t cistart, uint16_t wavescale, uint8_t bri, uint16_t ioff)
+{
+  uint16_t ci = cistart;
+  uint16_t waveangle = ioff;
+  uint16_t wavescale_half = (wavescale / 2) + 20;
+  for( uint16_t i = 0; i < NUM_LEDS; i++) {
+    waveangle += 250;
+    uint16_t s16 = sin16( waveangle ) + 32768;
+    uint16_t cs = scale16( s16 , wavescale_half ) + wavescale_half;
+    ci += cs;
+    uint16_t sindex16 = sin16( ci) + 32768;
+    uint8_t sindex8 = scale16( sindex16, 240);
+    CRGB c = ColorFromPalette( p, sindex8, bri, LINEARBLEND);
+    leds[i] += c;
+  }
+}
+
+// Add extra 'white' to areas where the four layers of light have lined up brightly
+void pacifica_add_whitecaps()
+{
+  uint8_t basethreshold = beatsin8( 9, 55, 65);
+  uint8_t wave = beat8( 7 );
+  
+  for( uint16_t i = 0; i < NUM_LEDS; i++) {
+    uint8_t threshold = scale8( sin8( wave), 20) + basethreshold;
+    wave += 7;
+    uint8_t l = leds[i].getAverageLight();
+    if( l > threshold) {
+      uint8_t overage = l - threshold;
+      uint8_t overage2 = qadd8( overage, overage);
+      leds[i] += CRGB( overage, overage2, qadd8( overage2, overage2));
+    }
+  }
+}
+
+// Deepen the blues and greens
+void pacifica_deepen_colors()
+{
+  for( uint16_t i = 0; i < NUM_LEDS; i++) {
+    leds[i].blue = scale8( leds[i].blue,  145); 
+    leds[i].green= scale8( leds[i].green, 200); 
+    leds[i] |= CRGB( 2, 5, 7);
+  }
+}
+
+void respirarNaranja()
+{
+  EVERY_N_MILLISECONDS( 20) {
+    pacifica_loop();
+    FastLED.show();
   }
 }
