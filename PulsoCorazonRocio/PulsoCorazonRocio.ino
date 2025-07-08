@@ -240,7 +240,7 @@ void bpm()
   if (beatAvg != 0)
     BeatsPerMinute = (uint8_t)beatAvg;
 
-  CRGBPalette16 palette = LavaColors_p;//PartyColors_p;
+  CRGBPalette16 palette = HeatColors_p;//PartyColors_p;
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
   for ( int i = 0; i < NUM_LEDS; i++) { //9948
     leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
