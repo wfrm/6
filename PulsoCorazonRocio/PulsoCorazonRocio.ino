@@ -11,6 +11,8 @@ byte rateSpot = 0;
 long lastBeat = 0;
 float beatsPerMinute;
 int beatAvg;
+boolean primeraVez = false;
+unsigned long tempo=600000;
 
 // ========== FastLED ==========
 #define LED_PIN     6
@@ -35,6 +37,8 @@ bool latidoActivo = false;
 unsigned long latidoInicio = 0;
 const int duracionLatido = 150;  // ms
 
+uint8_t BeatsPerMinute = 58;//62;//la persona esta relajada
+unsigned long tiempoEspera = 0;
 
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 #define FRAMES_PER_SECOND  120
@@ -58,16 +62,17 @@ CRGBPalette16 amber_glow_palette =
 };
 
 CRGBPalette16 saturated_orange_palette =
-{ 0x330000, 0x551100, 0x772200, 0x993300,
-  0xBB4400, 0xDD5500, 0xFF6600, 0xFF7700,
-  0xFF8800, 0xFF9900, 0xFFAA00, 0xFFBB22,
-  0xFFCC44, 0xFFDD66, 0xFFEE88, 0xFFFFAA
+{ 0xAA1400, 0xBE1900, 0xD21E00, 0xE62300,
+  0xFA2800, 0xFF2D00, 0xFF3200, 0xFF3700,
+  0xFF3700, 0xFF3200, 0xFF2D00, 0xFA2800,
+  0xE62300, 0xD21E00, 0xBE1900, 0xAA1400
 };
 
 
 long deltaIR = 0;
 long irValueAnterior = 0;
 void setup() {
+  tiempoEspera = millis();
   Serial.begin(115200);
   Serial.println("Inicializando...");
 
@@ -127,6 +132,7 @@ unsigned long inicioSinelon = 0;
 const unsigned long duracionSinelon = 2000; // en milisegundos
 
 void loop() {
+
   long irValue = particleSensor.getIR();
   deltaIR = irValue - irValueAnterior;
   //Serial.print(", deltaIR="); Serial.println(deltaIR);
@@ -144,6 +150,8 @@ void loop() {
     ultimoCambioDedo = ahora;
     rates[rateSpot++] = 60;
     Serial.println("🟢 Dedo detectado");
+   
+
   } else if (irValue < 50000 && dedoPresente && ahora - ultimoCambioDedo > debounceTiempo) {
     dedoPresente = false;
     ultimoCambioDedo = ahora;
@@ -154,6 +162,7 @@ void loop() {
   // === Calcular BPM si hay dedo ===
   if (dedoPresente) {
     if (checkForBeat(irValue)) {
+       primeraVez = true;
       long delta = ahora - lastBeat;
       lastBeat = ahora;
 
@@ -177,6 +186,7 @@ void loop() {
     Serial.print(", BPM="); Serial.print(beatsPerMinute);
     Serial.print(", Avg BPM="); Serial.println(beatAvg);
 
+
   }
 
   // === Mostrar animación ===
@@ -194,7 +204,16 @@ void loop() {
     FastLED.show();
     FastLED.delay(1000 / FRAMES_PER_SECOND);
   } else {
-    respirarNaranja();
+    if (primeraVez) {
+      bpm();
+      FastLED.show();
+      FastLED.delay(1000 / FRAMES_PER_SECOND);
+
+    }
+    else {
+      respirarNaranja();
+    }
+
   }
 
   // do some periodic updates
@@ -203,6 +222,13 @@ void loop() {
   }
   if (gHue > 50) {
     gHue = 0;
+  }
+
+    if (millis() - tiempoEspera > tempo  && primeraVez ) //10 minutos
+  {
+    tiempoEspera=millis();
+    primeraVez = false;
+    Serial.println("fin");
   }
 }
 
@@ -235,15 +261,22 @@ void respirar(unsigned long ahora, uint8_t velocidad) {
 }
 void bpm()
 {
-  uint8_t BeatsPerMinute = 62;
+
   // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
   if (beatAvg != 0)
     BeatsPerMinute = (uint8_t)beatAvg;
 
-  CRGBPalette16 palette = HeatColors_p;//PartyColors_p;
+  CRGBPalette16 palette = LavaColors_p;//LavaColors_p;//PartyColors_p;
+  ////////////////////////////////////////////////////
+  /// si la persona supera los 90 bpm color ambar
+  ////////////////////////////////////////
+  if (BeatsPerMinute > 90) {
+    palette = saturated_orange_palette; //orange_fire_palette;//HeatColors_p ;// buscado el ambar
+  }
+
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
   for ( int i = 0; i < NUM_LEDS; i++) { //9948
-    leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
+    leds[i] = ColorFromPalette(palette, gHue + (i * 6), beat - gHue + (i * 5));
   }
 }
 
