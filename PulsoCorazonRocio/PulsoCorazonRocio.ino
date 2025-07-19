@@ -266,12 +266,12 @@ void bpm()
   if (beatAvg != 0)
     BeatsPerMinute = (uint8_t)beatAvg;
 
-  CRGBPalette16 palette = LavaColors_p;//LavaColors_p;//PartyColors_p;
+  CRGBPalette16 palette = saturated_orange_palette;;//LavaColors_p;//PartyColors_p;
   ////////////////////////////////////////////////////
   /// si la persona supera los 90 bpm color ambar
   ////////////////////////////////////////
   if (BeatsPerMinute > 90) {
-    palette = saturated_orange_palette; //orange_fire_palette;//HeatColors_p ;// buscado el ambar
+    palette = LavaColors_p; //orange_fire_palette;//HeatColors_p ;// buscado el ambar
   }
 
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
