@@ -68,6 +68,13 @@ CRGBPalette16 saturated_orange_palette =
   0xE62300, 0xD21E00, 0xBE1900, 0xAA1400
 };
 
+CRGBPalette16 white_palette =
+{ 0xC0C0C0, 0xD0D0D0, 0xE0E0E0, 0xF0F0F0,
+  0xF8F8F8, 0xFCFCFC, 0xFEFEFE, 0xFFFFFF,
+  0xFFFFFF, 0xFEFEFE, 0xFCFCFC, 0xF8F8F8,
+  0xF0F0F0, 0xE0E0E0, 0xD0D0D0, 0xC0C0C0
+};
+
 
 long deltaIR = 0;
 long irValueAnterior = 0;
@@ -130,11 +137,8 @@ void pacifica_loop()
 bool animacionSinelonActiva = false;
 unsigned long inicioSinelon = 0;
 const unsigned long duracionSinelon = 2000; // en milisegundos
+
 void loop() {
-  sinelon();
-   FastLED.show();
-}
-void loope() {
 
   long irValue = particleSensor.getIR();
   deltaIR = irValue - irValueAnterior;
@@ -269,12 +273,12 @@ void bpm()
   if (beatAvg != 0)
     BeatsPerMinute = (uint8_t)beatAvg;
 
-  CRGBPalette16 palette = saturated_orange_palette;;//LavaColors_p;//PartyColors_p;
+  CRGBPalette16 palette = white_palette;//saturated_orange_palette;;//LavaColors_p;//PartyColors_p;
   ////////////////////////////////////////////////////
   /// si la persona supera los 90 bpm color ambar
   ////////////////////////////////////////
   if (BeatsPerMinute > 90) {
-    palette = LavaColors_p; //orange_fire_palette;//HeatColors_p ;// buscado el ambar
+    palette = saturated_orange_palette;//LavaColors_p; //orange_fire_palette;//HeatColors_p ;// buscado el ambar
   }
 
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
