@@ -191,7 +191,7 @@ void loop() {
 
   // === Mostrar animación ===
   if (animacionSinelonActiva) {
-    sinelon();
+    sinelonAmbar();
     FastLED.show();
 
     if (millis() - inicioSinelon >= duracionSinelon) {
@@ -340,4 +340,12 @@ void sinelon()
   fadeToBlackBy( leds, NUM_LEDS, 30);
   int pos = beatsin16( 30, 0, NUM_LEDS - 1 );
   leds[pos] += CHSV( gHue, 255, 192);
+}
+
+void sinelonAmbar()
+{
+  // a colored dot sweeping back and forth, with fading trails
+  fadeToBlackBy( leds, NUM_LEDS, 30);
+  int pos = beatsin16( 30, 0, NUM_LEDS - 1 );
+  leds[pos] = CRGB(200, 200 * 0.2, 0);
 }
