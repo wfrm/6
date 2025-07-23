@@ -214,12 +214,12 @@ void loop() {
   }
   else if (dedoPresente) {
 
-    respirar(ahora,10- periodo); //bpm();
+    respirar(ahora, 10 - periodo); //bpm();
     FastLED.show();
     FastLED.delay(1000 / FRAMES_PER_SECOND);
   } else {
     if (primeraVez) {
-      respirar(ahora,10- periodo); //bpm();
+      respirar(ahora, 10 - periodo); //bpm();
       FastLED.show();
       FastLED.delay(1000 / FRAMES_PER_SECOND);
 
@@ -259,12 +259,16 @@ void mostrarPulso(unsigned long ahora) {
 }
 
 void respirar(unsigned long ahora, uint8_t velocidad) {
+  CRGB color = CRGB(200, 200, 200);  // Naranja cálido
   if (ahora - lastBreatheUpdate >= velocidad) {
     lastBreatheUpdate = ahora;
 
-    uint8_t factor = breathingUp ? breatheStep += velocidad : breatheStep -= (velocidad)/2;
+    uint8_t factor = breathingUp ? breatheStep += velocidad : breatheStep -= (velocidad) / 2;
     uint8_t brillo = triwave8(factor);
-    CRGB color = CRGB(brillo, brillo * 0.2, 0);  // Naranja cálido
+    if (BeatsPerMinute > 90) {
+      color = CRGB(brillo, brillo * 0.2, 0);  // Naranja cálido
+    }
+
 
     fill_solid(leds, NUM_LEDS, color);
     confetti();
@@ -273,7 +277,7 @@ void respirar(unsigned long ahora, uint8_t velocidad) {
     if (breathingUp && breatheStep >= 255) breathingUp = false;
     if (!breathingUp && breatheStep <= 0) breathingUp = true;
   }
-   
+
 }
 void bpm()
 {
@@ -364,7 +368,7 @@ void sinelonAmbar()
   fadeToBlackBy( leds, NUM_LEDS, 30);
   int pos = beatsin16( 30, 0, NUM_LEDS - 1 );
   leds[pos] = CRGB(200, 200 * 0.2, 0);
- 
+
 }
 
 float mapCustom(float x) {
@@ -372,7 +376,7 @@ float mapCustom(float x) {
   float x1 = 90, y1 = 1;
   return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
 }
-void confetti() 
+void confetti()
 {
   // random colored speckles that blink in and fade smoothly
   //fadeToBlackBy( leds, NUM_LEDS, 10);
