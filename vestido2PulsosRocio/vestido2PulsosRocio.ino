@@ -138,7 +138,7 @@ bool animacionSinelonActiva = false;
 unsigned long inicioSinelon = 0;
 const unsigned long duracionSinelon = 2000; // en milisegundos
 
-unsigned long periodo=0;
+unsigned long periodo = 0;
 
 void loop() {
 
@@ -191,9 +191,13 @@ void loop() {
       latidoInicio = ahora;
     }
 
+    float salida1 = mapCustom(beatAvg);
+    periodo = (unsigned long)salida1;
+
     Serial.print("IR="); Serial.print(irValue);
     Serial.print(", BPM="); Serial.print(beatsPerMinute);
-    Serial.print(", Avg BPM="); Serial.println(beatAvg);
+    Serial.print(", Avg BPM="); Serial.print(beatAvg);
+    Serial.print(", periodo="); Serial.println(periodo);
 
 
   }
@@ -209,20 +213,19 @@ void loop() {
     }
   }
   else if (dedoPresente) {
-    float salida1 = mapCustom(beatAvg);
-    periodo=(unsigned long)salida1;
-    respirar(ahora, periodo); //bpm();
+
+    respirar(ahora,10- periodo); //bpm();
     FastLED.show();
     FastLED.delay(1000 / FRAMES_PER_SECOND);
   } else {
     if (primeraVez) {
-      respirar(ahora, periodo); //bpm();
+      respirar(ahora,10- periodo); //bpm();
       FastLED.show();
       FastLED.delay(1000 / FRAMES_PER_SECOND);
 
     }
     else {
-      respirar(ahora, 10);
+      respirar(ahora, 2);
     }
 
   }
@@ -259,16 +262,18 @@ void respirar(unsigned long ahora, uint8_t velocidad) {
   if (ahora - lastBreatheUpdate >= velocidad) {
     lastBreatheUpdate = ahora;
 
-    uint8_t factor = breathingUp ? breatheStep += 2 : breatheStep -= 1;
+    uint8_t factor = breathingUp ? breatheStep += velocidad : breatheStep -= (velocidad)/2;
     uint8_t brillo = triwave8(factor);
     CRGB color = CRGB(brillo, brillo * 0.2, 0);  // Naranja cálido
 
     fill_solid(leds, NUM_LEDS, color);
+    confetti();
     FastLED.show();
 
     if (breathingUp && breatheStep >= 255) breathingUp = false;
     if (!breathingUp && breatheStep <= 0) breathingUp = true;
   }
+   
 }
 void bpm()
 {
@@ -359,10 +364,18 @@ void sinelonAmbar()
   fadeToBlackBy( leds, NUM_LEDS, 30);
   int pos = beatsin16( 30, 0, NUM_LEDS - 1 );
   leds[pos] = CRGB(200, 200 * 0.2, 0);
+ 
 }
 
 float mapCustom(float x) {
-  float x0 = 55, y0 = 10;
-  float x1 = 90, y1 = 2;
+  float x0 = 30, y0 = 7;
+  float x1 = 90, y1 = 1;
   return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
+}
+void confetti() 
+{
+  // random colored speckles that blink in and fade smoothly
+  //fadeToBlackBy( leds, NUM_LEDS, 10);
+  int pos = random16(NUM_LEDS);
+  leds[pos] = CRGB(20, 20, 20);
 }
