@@ -12,7 +12,7 @@ long lastBeat = 0;
 float beatsPerMinute;
 int beatAvg;
 boolean primeraVez = false;
-unsigned long tempo=180000;
+unsigned long tempo = 180000;
 
 // ========== FastLED ==========
 #define LED_PIN     6
@@ -138,6 +138,8 @@ bool animacionSinelonActiva = false;
 unsigned long inicioSinelon = 0;
 const unsigned long duracionSinelon = 2000; // en milisegundos
 
+unsigned long periodo=0;
+
 void loop() {
 
   long irValue = particleSensor.getIR();
@@ -157,7 +159,7 @@ void loop() {
     ultimoCambioDedo = ahora;
     rates[rateSpot++] = 60;
     Serial.println("🟢 Dedo detectado");
-   
+
 
   } else if (irValue < 50000 && dedoPresente && ahora - ultimoCambioDedo > debounceTiempo) {
     dedoPresente = false;
@@ -169,7 +171,7 @@ void loop() {
   // === Calcular BPM si hay dedo ===
   if (dedoPresente) {
     if (checkForBeat(irValue)) {
-       primeraVez = true;
+      primeraVez = true;
       long delta = ahora - lastBeat;
       lastBeat = ahora;
 
@@ -207,18 +209,20 @@ void loop() {
     }
   }
   else if (dedoPresente) {
-    bpm();
+    float salida1 = mapCustom(beatAvg);
+    periodo=(unsigned long)salida1;
+    respirar(ahora, periodo); //bpm();
     FastLED.show();
     FastLED.delay(1000 / FRAMES_PER_SECOND);
   } else {
     if (primeraVez) {
-      bpm();
+      respirar(ahora, periodo); //bpm();
       FastLED.show();
       FastLED.delay(1000 / FRAMES_PER_SECOND);
 
     }
     else {
-      respirar(ahora,10);
+      respirar(ahora, 10);
     }
 
   }
@@ -231,9 +235,9 @@ void loop() {
     gHue = 0;
   }
 
-    if (millis() - tiempoEspera > tempo  && primeraVez ) //10 minutos
+  if (millis() - tiempoEspera > tempo  && primeraVez ) //10 minutos
   {
-    tiempoEspera=millis();
+    tiempoEspera = millis();
     primeraVez = false;
     Serial.println("fin");
   }
@@ -355,4 +359,10 @@ void sinelonAmbar()
   fadeToBlackBy( leds, NUM_LEDS, 30);
   int pos = beatsin16( 30, 0, NUM_LEDS - 1 );
   leds[pos] = CRGB(200, 200 * 0.2, 0);
+}
+
+float mapCustom(float x) {
+  float x0 = 55, y0 = 10;
+  float x1 = 90, y1 = 2;
+  return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
 }
