@@ -78,6 +78,9 @@ CRGBPalette16 white_palette =
 
 long deltaIR = 0;
 long irValueAnterior = 0;
+CRGB color = CRGB(200, 200, 200);  // Naranja cálido
+
+
 void setup() {
   tiempoEspera = millis();
   Serial.begin(115200);
@@ -215,18 +218,19 @@ void loop() {
   else if (dedoPresente) {
 
     respirar(ahora, 10 - periodo); //bpm();
-    FastLED.show();
-    FastLED.delay(1000 / FRAMES_PER_SECOND);
+    //FastLED.show();
+    //FastLED.delay(1000 / FRAMES_PER_SECOND);
   } else {
     if (primeraVez) {
       respirar(ahora, 10 - periodo); //bpm();
-      FastLED.show();
-      FastLED.delay(1000 / FRAMES_PER_SECOND);
+
 
     }
     else {
       respirar(ahora, 2);
     }
+    FastLED.show();
+    FastLED.delay(1000 / FRAMES_PER_SECOND);
 
   }
 
@@ -259,19 +263,20 @@ void mostrarPulso(unsigned long ahora) {
 }
 
 void respirar(unsigned long ahora, uint8_t velocidad) {
-  CRGB color = CRGB(200, 200, 200);  // Naranja cálido
+
   if (ahora - lastBreatheUpdate >= velocidad) {
     lastBreatheUpdate = ahora;
 
     uint8_t factor = breathingUp ? breatheStep += velocidad : breatheStep -= (velocidad) / 2;
-    uint8_t brillo = triwave8(factor);
-    if (BeatsPerMinute > 90) {
+    uint8_t brillo = triwave8(factor)*0.3;
+    color = CRGB(brillo, brillo, brillo);
+    if (beatAvg > 90) {
       color = CRGB(brillo, brillo * 0.2, 0);  // Naranja cálido
     }
 
 
     fill_solid(leds, NUM_LEDS, color);
-    confetti();
+    //confetti();
     FastLED.show();
 
     if (breathingUp && breatheStep >= 255) breathingUp = false;
